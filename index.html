@@ -1,0 +1,76 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<title>CineMatch - Seu assistente pessoal para encontrar o filme perfeito</title>
+
+		<link rel="stylesheet" href="src/css/reset.css" />
+		<link rel="stylesheet" href="src/css/styles.css" />
+
+		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
+	</head>
+	<body>
+		<div class="bg"></div>
+		<div class="bg bg2"></div>
+		<div class="bg bg3"></div>
+
+		<main class="container">
+			<div class="main-content">
+				<header class="brand-header">
+					<div class="container-logo">
+						<img src="src/images/botflix-robot.jpg" alt="Assistente robô BotFlix" class="robot-image" />
+
+						<h1 class="brand-title">CineMatch</h1>
+					</div>
+
+					<p class="brand-subtitle">Seu assistente pessoal para encontrar o filme perfeito</p>
+				</header>
+
+				<section class="search-card">
+					<div class="search-content">
+						<div class="input-container">
+							<textarea rows="3" id="mood-textarea" placeholder="Digite como você está se sentindo ou quer assistir..." class="mood-textarea"></textarea>
+						</div>
+
+						<div class="examples">
+							<h3 class="examples-title">Exemplos:</h3>
+							<ul class="examples-list">
+								<li>Quero algo engraçado para relaxar depois do trabalho</li>
+								<li>Estou procurando um thriller que me deixe na ponta da cadeira</li>
+								<li>Algo romântico para assistir com minha namorada</li>
+							</ul>
+						</div>
+
+						<button id="search-button" class="search-button">
+							<span class="play-icon">&#9654;</span>
+							Encontrar Filmes Perfeitos
+						</button>
+					</div>
+				</section>
+
+				<div id="results" class="results">
+					<h2>Filmes Perfeitos para Você</h2>
+					<div id="movie" class="movie">
+						<div id="results" class="show">
+							<h2>Filmes perfeitos pra você</h2>
+							<div id="movies-grid" class="movies-grid">
+								<div class="movie-card">
+									<div class="movie-poster">
+										<img src="https://image.tmdb.org/t/p/w500/6Sc7Tjt7aPsdghYK32mDMFeZkqJ.jpg" alt="Não Olhe para Cima" />
+									</div>
+									<div class="movie-info">
+										<h4 class="movie-title">Não Olhe para Cima</h4>
+										<p class="movie-overview">Dois astrônomos descobrem um cometa mortal vindo em direção à Terra e partem em um tour midiático para alertar a humanidade. Só que ninguém parece dar muita bola.</p>
+										<p class="movie-rating">⭐ 7.1 / 10</p>
+									</div>
+								</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</main>
+		<script src="src/scripts/engine.js"></script>
+	</body>
+</html>
