@@ -1,6 +1,6 @@
 // CineMatch - Engine de Recomendação de Filmes
 // Configuração da API do TMDB
-const API_KEY = 'SUA_CHAVE_API_AQUI'; // Substitua pela sua chave da API do TMDB
+const API_KEY = '6af30508f3e232b90ff7da87313ee5e3'; // Substitua pela sua chave da API do TMDB
 const BASE_URL = 'https://api.themoviedb.org/3';
 const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
 
@@ -174,7 +174,7 @@ class CineMatch {
 
     async searchMovies(genres, mood) {
         // Se não tiver API key, usa dados mockados
-        if (!API_KEY || API_KEY === 'SUA_CHAVE_API_AQUI') {
+        if (!API_KEY || API_KEY === '6af30508f3e232b90ff7da87313ee5e3') {
             return this.getMockMovies(genres);
         }
 
