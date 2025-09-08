@@ -1,374 +1,351 @@
-// CineMatch - Engine de Recomendação de Filmes
-// Configuração da API do TMDB
-const API_KEY = '6af30508f3e232b90ff7da87313ee5e3'; // Substitua pela sua chave da API do TMDB
-const BASE_URL = 'https://api.themoviedb.org/3';
-const IMAGE_BASE_URL = 'https://image.tmdb.org/t/p/w500';
+const moodTextArea = document.getElementById("mood-textarea");
+const searchButton = document.getElementById("search-button");
 
-// Mapeamento de sentimentos para gêneros de filmes
-const MOOD_TO_GENRES = {
-    // Comédia e diversão
-    'engraçado': [35], // Comedy
-    'comédia': [35],
-    'diversão': [35],
-    'alegre': [35],
-    'feliz': [35],
-    'relaxar': [35],
-    'rir': [35],
+// 🔑 CONFIGURAÇÃO FINAL PARA HEADER AUTH
+// Baseado no seu N8N: Header Auth com nome "authorization"
+const TOKEN = "6af30508f3e232b90ff7da87313ee5e3";
+const WEBHOOK_URL = "https://devalex-full.app.n8n.cloud/webhook-test/cinematch";
+const AUTH_HEADER = "authorization";  // Nome exato do seu header no N8N
+
+document.addEventListener("DOMContentLoaded", () => {
+    setupEventListeners();
     
-    // Romance
-    'romântico': [10749], // Romance
-    'romance': [10749],
-    'amor': [10749],
-    'namorada': [10749],
-    'casal': [10749],
-    'paixão': [10749],
-    
-    // Ação e aventura
-    'ação': [28], // Action
-    'aventura': [12], // Adventure
-    'adrenalina': [28],
-    'empolgante': [28, 12],
-    'energético': [28],
-    
-    // Suspense e thriller
-    'suspense': [53], // Thriller
-    'thriller': [53],
-    'tensão': [53],
-    'mistério': [9648], // Mystery
-    'medo': [27], // Horror
-    'terror': [27],
-    
-    // Drama
-    'drama': [18], // Drama
-    'emocional': [18],
-    'reflexivo': [18],
-    'profundo': [18],
-    'chorar': [18],
-    
-    // Ficção científica
-    'ficção científica': [878], // Science Fiction
-    'sci-fi': [878],
-    'futurista': [878],
-    'tecnologia': [878],
-    
-    // Fantasia
-    'fantasia': [14], // Fantasy
-    'mágico': [14],
-    'épico': [14],
-    
-    // Documentário
-    'documentário': [99], // Documentary
-    'aprender': [99],
-    'educativo': [99],
-    
-    // Animação
-    'animação': [16], // Animation
-    'desenho': [16],
-    'família': [10751] // Family
-};
-
-// Palavras-chave para diferentes tipos de busca
-const MOOD_KEYWORDS = {
-    'trabalho': ['comédia', 'relaxar'],
-    'estressado': ['comédia', 'relaxar'],
-    'cansado': ['comédia', 'drama'],
-    'sozinho': ['drama', 'romance'],
-    'amigos': ['comédia', 'ação'],
-    'família': ['família', 'animação'],
-    'noite': ['thriller', 'terror'],
-    'fim de semana': ['ação', 'aventura'],
-    'chuva': ['drama', 'romance'],
-    'nostalgia': ['drama', 'romance']
-};
-
-class CineMatch {
-    constructor() {
-        this.searchButton = document.getElementById('search-button');
-        this.moodTextarea = document.getElementById('mood-textarea');
-        this.resultsSection = document.getElementById('results');
-        this.moviesGrid = document.getElementById('movies-grid');
-        
-        this.initEventListeners();
-    }
-
-    initEventListeners() {
-        this.searchButton.addEventListener('click', () => this.handleSearch());
-        
-        this.moodTextarea.addEventListener('keypress', (e) => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-                e.preventDefault();
-                this.handleSearch();
-            }
-        });
-
-        // Adiciona exemplos clicáveis
-        document.querySelectorAll('.examples-list li').forEach(li => {
-            li.style.cursor = 'pointer';
-            li.addEventListener('click', () => {
-                this.moodTextarea.value = li.textContent;
-                this.handleSearch();
-            });
-        });
-    }
-
-    async handleSearch() {
-        const mood = this.moodTextarea.value.trim().toLowerCase();
-        
-        if (!mood) {
-            this.showError('Por favor, descreva como você está se sentindo ou o que gostaria de assistir.');
-            return;
-        }
-
-        this.showLoading();
-        
-        try {
-            const genres = this.analyzeMovieMood(mood);
-            const movies = await this.searchMovies(genres, mood);
-            
-            if (movies && movies.length > 0) {
-                this.displayResults(movies);
-            } else {
-                this.showError('Não encontramos filmes para esse humor. Tente descrever de forma diferente.');
-            }
-        } catch (error) {
-            console.error('Erro na busca:', error);
-            this.showError('Ocorreu um erro na busca. Tente novamente.');
-        }
-    }
-
-    analyzeMovieMood(mood) {
-        let genres = [];
-        
-        // Verifica palavras-chave diretas
-        for (const [key, genreIds] of Object.entries(MOOD_TO_GENRES)) {
-            if (mood.includes(key)) {
-                genres = [...genres, ...genreIds];
-            }
-        }
-
-        // Verifica contextos mais amplos
-        for (const [context, keywords] of Object.entries(MOOD_KEYWORDS)) {
-            if (mood.includes(context)) {
-                keywords.forEach(keyword => {
-                    if (MOOD_TO_GENRES[keyword]) {
-                        genres = [...genres, ...MOOD_TO_GENRES[keyword]];
-                    }
-                });
-            }
-        }
-
-        // Se não encontrou gêneros específicos, usa padrões baseados em palavras-chave gerais
-        if (genres.length === 0) {
-            if (mood.includes('triste') || mood.includes('melancol')) {
-                genres = [18]; // Drama
-            } else if (mood.includes('energy') || mood.includes('anima')) {
-                genres = [28]; // Action
-            } else {
-                genres = [35, 18, 28]; // Mix de comédia, drama e ação
-            }
-        }
-
-        // Remove duplicatas
-        return [...new Set(genres)];
-    }
-
-    async searchMovies(genres, mood) {
-        // Se não tiver API key, usa dados mockados
-        if (!API_KEY || API_KEY === '6af30508f3e232b90ff7da87313ee5e3') {
-            return this.getMockMovies(genres);
-        }
-
-        try {
-            const genreQuery = genres.join(',');
-            const response = await fetch(
-                `${BASE_URL}/discover/movie?api_key=${API_KEY}&with_genres=${genreQuery}&sort_by=vote_average.desc&vote_count.gte=100&language=pt-BR&page=1`
-            );
-            
-            if (!response.ok) throw new Error('Erro na API');
-            
-            const data = await response.json();
-            return data.results.slice(0, 6); // Limita a 6 filmes
-        } catch (error) {
-            console.error('Erro na API:', error);
-            return this.getMockMovies(genres);
-        }
-    }
-
-    getMockMovies(genres) {
-        const mockMovies = [
-            {
-                id: 1,
-                title: "Parasita",
-                overview: "Uma família pobre se infiltra na vida de uma família rica, mas um segredo ameaça destruir seus planos e suas vidas.",
-                vote_average: 8.5,
-                poster_path: "/7IiTTgloJzvGI1TAYymCfbfl3vT.jpg"
-            },
-            {
-                id: 2,
-                title: "Interestelar",
-                overview: "Um grupo de exploradores espaciais viaja através de um buraco de minhoca no espaço na tentativa de garantir a sobrevivência da humanidade.",
-                vote_average: 8.6,
-                poster_path: "/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg"
-            },
-            {
-                id: 3,
-                title: "Vingadores: Ultimato",
-                overview: "Os heróis remanescentes devem encontrar uma forma de reverter as ações de Thanos e restaurar a ordem no universo de uma vez por todas.",
-                vote_average: 8.4,
-                poster_path: "/or06FN3Dka5tukK1e9sl16pB3iy.jpg"
-            },
-            {
-                id: 4,
-                title: "Coringa",
-                overview: "Durante a década de 1980, um comediante fracassado é levado à loucura e ao crime após ser rejeitado pela sociedade.",
-                vote_average: 8.2,
-                poster_path: "/udDclJoHjfjb8Ekgsd4FDteOkCU.jpg"
-            },
-            {
-                id: 5,
-                title: "Klaus",
-                overview: "Um carteiro egocêntrico e um fabricante de brinquedos recluso formam uma amizade improvável na cidade mais fria do mundo.",
-                vote_average: 8.2,
-                poster_path: "/4syth8moJdKpbDcKmtfGfFgz7CN.jpg"
-            },
-            {
-                id: 6,
-                title: "Cidade de Deus",
-                overview: "A história de Buscapé, um jovem fotógrafo que cresce em um bairro violento do Rio de Janeiro.",
-                vote_average: 8.6,
-                poster_path: "/gCqnQaq8T5WnFGbKzB6XzLBWvMN.jpg"
-            }
-        ];
-
-        // Filtra por gênero simulado baseado no ID
-        return mockMovies.slice(0, 4);
-    }
-
-    displayResults(movies) {
-        this.moviesGrid.innerHTML = '';
-
-        movies.forEach(movie => {
-            const movieCard = this.createMovieCard(movie);
-            this.moviesGrid.appendChild(movieCard);
-        });
-
-        this.resultsSection.classList.add('show');
-        this.resultsSection.style.display = 'block';
-        
-        // Scroll suave para os resultados
-        this.resultsSection.scrollIntoView({ 
-            behavior: 'smooth',
-            block: 'start'
-        });
-    }
-
-    createMovieCard(movie) {
-        const card = document.createElement('div');
-        card.className = 'movie-card';
-
-        const posterUrl = movie.poster_path 
-            ? `${IMAGE_BASE_URL}${movie.poster_path}`
-            : null;
-
-        const posterHtml = posterUrl
-            ? `<img src="${posterUrl}" alt="${movie.title}" onerror="this.parentElement.innerHTML='<div class=\\"no-poster\\">Sem Poster</div>'" />`
-            : `<div class="no-poster">Sem Poster Disponível</div>`;
-
-        card.innerHTML = `
-            <div class="movie-poster">
-                ${posterHtml}
-            </div>
-            <div class="movie-info">
-                <h4 class="movie-title">${movie.title}</h4>
-                <div class="movie-overview">${movie.overview || 'Sinopse não disponível.'}</div>
-                <p class="movie-rating">⭐ ${movie.vote_average ? movie.vote_average.toFixed(1) : 'N/A'} / 10</p>
-            </div>
-        `;
-
-        // Adiciona efeito de hover
-        card.addEventListener('mouseenter', () => {
-            card.style.transform = 'translateY(-8px) scale(1.03)';
-        });
-
-        card.addEventListener('mouseleave', () => {
-            card.style.transform = 'translateY(0) scale(1)';
-        });
-
-        return card;
-    }
-
-    showLoading() {
-        this.searchButton.innerHTML = '🔍 Buscando filmes perfeitos...';
-        this.searchButton.disabled = true;
-        
-        this.resultsSection.style.display = 'none';
-        this.resultsSection.classList.remove('show');
-    }
-
-    showError(message) {
-        this.searchButton.innerHTML = '🎬 Encontrar Filmes Perfeitos';
-        this.searchButton.disabled = false;
-        
-        // Cria elemento de erro temporário
-        const errorDiv = document.createElement('div');
-        errorDiv.style.cssText = `
-            color: #ff6b6b;
-            text-align: center;
-            margin-top: 16px;
-            padding: 12px;
-            background: rgba(255, 107, 107, 0.1);
-            border: 1px solid rgba(255, 107, 107, 0.3);
-            border-radius: 8px;
-        `;
-        errorDiv.textContent = message;
-        
-        // Remove erro anterior se existir
-        const existingError = document.querySelector('.error-message');
-        if (existingError) {
-            existingError.remove();
-        }
-        
-        errorDiv.className = 'error-message';
-        this.searchButton.parentElement.appendChild(errorDiv);
-        
-        // Remove após 5 segundos
-        setTimeout(() => {
-            if (errorDiv.parentElement) {
-                errorDiv.remove();
-            }
-        }, 5000);
-    }
-
-    resetButton() {
-        this.searchButton.innerHTML = '▶️ Encontrar Filmes Perfeitos';
-        this.searchButton.disabled = false;
-    }
-}
-
-// Inicializa a aplicação quando o DOM estiver carregado
-document.addEventListener('DOMContentLoaded', () => {
-    new CineMatch();
+    // Descomente para debug automático
+    // setTimeout(debugConnection, 2000);
 });
 
-// Função para demonstração sem API key
-function runDemo() {
-    const textarea = document.getElementById('mood-textarea');
-    textarea.value = 'Quero algo engraçado para relaxar depois do trabalho';
-    
-    setTimeout(() => {
-        document.getElementById('search-button').click();
-    }, 500);
+function setupEventListeners() {
+    moodTextArea.addEventListener("keypress", event => {
+        if (event.key === "Enter" && !event.shiftKey) {
+            event.preventDefault();
+            handleSearch();
+        }
+    });
+
+    searchButton.addEventListener("click", handleSearch);
 }
 
-// Comentário com instruções para obter API key
-/*
-INSTRUÇÕES PARA CONFIGURAR A API DO TMDB:
+async function handleSearch() {
+    const mood = moodTextArea.value.trim();
 
-1. Acesse https://www.themoviedb.org/
-2. Crie uma conta gratuita
-3. Vá em Settings > API
-4. Solicite uma API key
-5. Substitua 'SUA_CHAVE_API_AQUI' pela sua chave real
+    if (!mood) {
+        alert("Por favor, descreva como você está se sentindo ou que tipo de filme quer assistir!");
+        return;
+    }
 
-Sem a API key, o sistema funcionará com dados mockados.
-*/
+    // Desabilita o botão durante a busca
+    searchButton.disabled = true;
+    searchButton.innerHTML = "🔍 Buscando o filme perfeito...";
+
+    try {
+        console.log("🎬 Iniciando busca para:", mood);
+        
+        const movieData = await makeRequest(mood);
+        
+        if (movieData) {
+            processMovieData(movieData);
+        } else {
+            throw new Error("Não foi possível conectar com o servidor. Verifique se o workflow N8N está ativo.");
+        }
+        
+    } catch (error) {
+        console.error("🚨 Erro na busca:", error);
+        showError(`Erro ao buscar filmes: ${error.message}`);
+    } finally {
+        // Reabilita o botão
+        searchButton.disabled = false;
+        searchButton.innerHTML = '<span class="play-icon">&#9654;</span> Encontrar Filmes Perfeitos';
+    }
+}
+
+async function makeRequest(mood) {
+    console.log("🔍 Fazendo requisição com Header Auth...");
+    
+    try {
+        console.log(`📡 Usando header: ${AUTH_HEADER}: ${TOKEN.substring(0, 8)}...`);
+        
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                [AUTH_HEADER]: TOKEN,
+            },
+            body: JSON.stringify({ 
+                userPrompt: mood,
+                timestamp: new Date().toISOString(),
+                source: "cinematch-web"
+            }),
+        });
+
+        console.log(`   Status: ${response.status}`);
+
+        if (response.ok) {
+            console.log(`✅ SUCESSO com Header Auth!`);
+            const data = await response.json();
+            console.log("📊 Dados recebidos:", data);
+            return data;
+        } else {
+            const errorText = await response.text();
+            console.log(`   ❌ Falha Header Auth: ${errorText.substring(0, 100)}`);
+        }
+        
+    } catch (error) {
+        console.log(`   💥 Erro de rede: ${error.message}`);
+    }
+    
+    // Fallback: tenta sem autenticação
+    console.log("🔓 Tentativa fallback: sem autenticação...");
+    
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body: JSON.stringify({ 
+                userPrompt: mood,
+                timestamp: new Date().toISOString(),
+                source: "cinematch-web"
+            }),
+        });
+        
+        if (response.ok) {
+            console.log("✅ Funciona SEM autenticação!");
+            const data = await response.json();
+            return data;
+        } else {
+            const errorText = await response.text();
+            console.log("❌ Falhou sem auth:", errorText.substring(0, 100));
+        }
+    } catch (error) {
+        console.log("💥 Erro final:", error.message);
+    }
+    
+    return null;
+}
+
+function processMovieData(data) {
+    console.log("🎭 Processando dados dos filmes:", data);
+
+    // O N8N pode retornar diferentes estruturas dependendo do nó
+    let movies = null;
+    
+    // Tenta diferentes estruturas possíveis de resposta do TMDB via N8N
+    if (data && data.results && Array.isArray(data.results)) {
+        // Resposta direta do TMDB
+        movies = data.results;
+    } else if (Array.isArray(data)) {
+        // Array direto
+        movies = data;
+    } else if (data.body && data.body.results) {
+        // Resposta encapsulada
+        movies = data.body.results;
+    } else if (data.data && Array.isArray(data.data)) {
+        // Outra estrutura comum
+        movies = data.data;
+    } else if (data.json && data.json.results) {
+        // N8N às vezes encapsula em 'json'
+        movies = data.json.results;
+    } else if (data[0] && data[0].json && data[0].json.results) {
+        // Estrutura do N8N com array de execuções
+        movies = data[0].json.results;
+    }
+
+    if (movies && movies.length > 0) {
+        console.log(`🎬 Encontrados ${movies.length} filmes válidos`);
+        displayMovies(movies);
+    } else {
+        console.log("❌ Nenhum filme encontrado na resposta:", data);
+        showError("Nenhum filme encontrado para essa descrição. Tente ser mais específico ou use termos diferentes!");
+    }
+}
+
+function displayMovies(movies) {
+    const resultsDiv = document.getElementById("results");
+    const moviesGrid = document.getElementById("movies-grid");
+
+    if (!resultsDiv || !moviesGrid) {
+        console.error("❌ Elementos da interface não encontrados");
+        return;
+    }
+
+    // Filtra filmes válidos (com título e descrição)
+    const validMovies = movies
+        .filter(movie => movie.title && movie.overview)
+        .slice(0, 6); // Limita a 6 filmes
+    
+    if (validMovies.length === 0) {
+        showError("Os filmes encontrados não têm informações completas. Tente outra descrição!");
+        return;
+    }
+
+    console.log(`🎯 Exibindo ${validMovies.length} filmes`);
+
+    // Cria os cards dos filmes
+    moviesGrid.innerHTML = validMovies.map(movie => {
+        const posterUrl = movie.poster_path 
+            ? `https://image.tmdb.org/t/p/w500${movie.poster_path}`
+            : null;
+
+        const title = movie.title || "Título não disponível";
+        const overview = movie.overview || "Descrição não disponível.";
+        const rating = movie.vote_average ? Number(movie.vote_average).toFixed(1) : "N/A";
+        const releaseYear = movie.release_date ? new Date(movie.release_date).getFullYear() : "";
+
+        return `
+            <div class="movie-card">
+                <div class="movie-poster">
+                    ${posterUrl 
+                        ? `<img src="${posterUrl}" alt="${title}" onerror="this.parentElement.innerHTML='<div class=&quot;no-poster&quot;>🎬<br>Poster<br>indisponível</div>'" loading="lazy" />`
+                        : `<div class="no-poster">🎬<br>Poster<br>indisponível</div>`
+                    }
+                </div>
+                <div class="movie-info">
+                    <div class="movie-title">
+                        ${title}
+                        ${releaseYear ? ` (${releaseYear})` : ""}
+                    </div>
+                    <div class="movie-overview">${overview}</div>
+                    <div class="movie-rating">
+                        ⭐ ${rating}/10
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+
+    // Mostra os resultados e faz scroll suave
+    resultsDiv.classList.add("show");
+    setTimeout(() => {
+        resultsDiv.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }, 100);
+}
+
+function showError(message) {
+    console.error("💥 Exibindo erro:", message);
+    
+    const resultsDiv = document.getElementById("results");
+    const moviesGrid = document.getElementById("movies-grid");
+    
+    if (resultsDiv && moviesGrid) {
+        moviesGrid.innerHTML = `
+            <div style="
+                grid-column: 1 / -1; 
+                text-align: center; 
+                padding: 40px 20px; 
+                color: #ff6b6b; 
+                background: rgba(255, 107, 107, 0.1); 
+                border-radius: 12px; 
+                border: 1px solid rgba(255, 107, 107, 0.3);
+                max-width: 600px;
+                margin: 0 auto;
+            ">
+                <h3 style="margin-bottom: 16px; font-size: 24px;">😔 Algo deu errado</h3>
+                <p style="margin-bottom: 20px; font-size: 16px; line-height: 1.5;">${message}</p>
+                <div style="text-align: left; max-width: 400px; margin: 0 auto;">
+                    <p style="font-weight: 600; margin-bottom: 12px; text-align: center;">💡 Dicas para melhorar a busca:</p>
+                    <ul style="margin-left: 20px; line-height: 1.8; text-align: left;">
+                        <li>Use termos específicos: "filme de ação dos anos 90"</li>
+                        <li>Descreva o gênero: "comédia romântica"</li>
+                        <li>Mencione o humor: "algo engraçado para relaxar"</li>
+                        <li>Seja específico: "thriller psicológico"</li>
+                    </ul>
+                </div>
+            </div>
+        `;
+        resultsDiv.classList.add("show");
+    }
+}
+
+// 🧪 FUNÇÃO DE DEBUG PARA SEU HEADER ESPECÍFICO
+async function debugConnection() {
+    console.log("🧪 === DEBUG HEADER AUTH ESPECÍFICO ===");
+    console.log("🔗 URL:", WEBHOOK_URL);
+    console.log("🔑 Token:", TOKEN);
+    console.log("📋 Header:", AUTH_HEADER);
+    console.log("📅 Timestamp:", new Date().toISOString());
+    
+    console.log("\n📋 === Testando sua configuração exata ===");
+    
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+                [AUTH_HEADER]: TOKEN,
+            },
+            body: JSON.stringify({ 
+                userPrompt: "filme de ação teste",
+                debug: true,
+                headerUsed: AUTH_HEADER
+            }),
+        });
+        
+        console.log(`   📊 Status: ${response.status} ${response.statusText}`);
+        console.log(`   📤 Header enviado: ${AUTH_HEADER}: ${TOKEN}`);
+        
+        const text = await response.text();
+        console.log(`   📄 Resposta (${text.length} chars):`, text);
+        
+        if (response.ok) {
+            console.log(`   ✅ HEADER AUTH FUNCIONANDO!`);
+            
+            try {
+                const data = JSON.parse(text);
+                console.log(`   🎬 Dados parseados:`, data);
+                
+                if (data.results && data.results.length > 0) {
+                    console.log(`   🎯 Encontrados ${data.results.length} filmes!`);
+                    console.log(`   🎬 Primeiro filme:`, data.results[0].title);
+                } else {
+                    console.log(`   📋 Estrutura da resposta:`, Object.keys(data));
+                }
+            } catch (e) {
+                console.log(`   ⚠️  Resposta não é JSON válido:`, e.message);
+            }
+            
+        } else {
+            console.log(`   ❌ Header Auth falhou com status ${response.status}`);
+            console.log(`   📄 Erro completo:`, text);
+        }
+        
+    } catch (error) {
+        console.log(`   💥 Erro de rede: ${error.message}`);
+    }
+    
+    console.log("\n🔓 === Testando sem autenticação ===");
+    try {
+        const response = await fetch(WEBHOOK_URL, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Accept": "application/json",
+            },
+            body: JSON.stringify({ 
+                userPrompt: "teste sem auth",
+                debug: true 
+            }),
+        });
+        
+        console.log(`Status: ${response.status}`);
+        const text = await response.text();
+        console.log(`Resposta: ${text.substring(0, 200)}`);
+        
+        if (response.ok) {
+            console.log("✅ Funciona sem autenticação!");
+        }
+    } catch (error) {
+        console.error("💥 Erro sem auth:", error);
+    }
+    
+    console.log("\n🏁 === FIM DO DEBUG ===");
+}
+
+// Para executar o debug manualmente no console:
+// debugConnection()
+
+// Para debug automático (descomente):
+// window.addEventListener('load', () => setTimeout(debugConnection, 1000));

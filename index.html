@@ -5,8 +5,8 @@
 		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
 		<title>CineMatch - Seu assistente pessoal para encontrar o filme perfeito</title>
 
-		<link rel="stylesheet" href="src/css/reset.css" />
-		<link rel="stylesheet" href="src/css/styles.css" />
+		<link rel="stylesheet" href="./src/css/reset.css" />
+		<link rel="stylesheet" href="./src/css/styles.css" />
 
 		<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet" />
 	</head>
@@ -19,7 +19,7 @@
 			<div class="main-content">
 				<header class="brand-header">
 					<div class="container-logo">
-						<img src="src/images/botflix-robot.jpg" alt="Assistente robô BotFlix" class="robot-image" />
+						<img src="src/images/botflix-robot.jpg" alt="Assistente robô CineMatch" class="robot-image" />
 
 						<h1 class="brand-title">CineMatch</h1>
 					</div>
@@ -51,26 +51,10 @@
 
 				<div id="results" class="results">
 					<h2>Filmes Perfeitos para Você</h2>
-					<div id="movie" class="movie">
-						<div id="results" class="show">
-							<h2>Filmes perfeitos pra você</h2>
-							<div id="movies-grid" class="movies-grid">
-								<div class="movie-card">
-									<div class="movie-poster">
-										<img src="https://image.tmdb.org/t/p/w500/6Sc7Tjt7aPsdghYK32mDMFeZkqJ.jpg" alt="Não Olhe para Cima" />
-									</div>
-									<div class="movie-info">
-										<h4 class="movie-title">Não Olhe para Cima</h4>
-										<p class="movie-overview">Dois astrônomos descobrem um cometa mortal vindo em direção à Terra e partem em um tour midiático para alertar a humanidade. Só que ninguém parece dar muita bola.</p>
-										<p class="movie-rating">⭐ 7.1 / 10</p>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
+					<div id="movies-grid" class="movies-grid"></div>
 				</div>
 			</div>
 		</main>
-		<script src="src/scripts/engine.js"></script>
+		<script src="/src/scripts/engine.js"></script>
 	</body>
 </html>
